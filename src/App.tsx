@@ -2,20 +2,39 @@ import { useState, useRef } from 'react'
 import { useReactToPrint } from 'react-to-print'
 import ResumeForm from './components/ResumeForm'
 import ResumePreview from './components/ResumePreview'
+import LoginPage from './pages/LoginPage'
+import { useAuth } from './contexts/AuthContext'
+import { useResumeSync } from './hooks/useResumeSync'
 import type { ResumeData } from './types/resume'
 import { defaultResumeData } from './types/resume'
 
 type Tab = 'form' | 'preview'
 
 export default function App() {
+  const { user, loading, logout } = useAuth()
   const [data, setData] = useState<ResumeData>(defaultResumeData)
   const [tab, setTab] = useState<Tab>('form')
   const printRef = useRef<HTMLDivElement>(null)
+
+  useResumeSync(user?.uid ?? null, data, setData)
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `이력서_${data.personalInfo.nameKo || '홍길동'}`,
   })
+
+  if (loading) {
+    return (
+      <div className="auth-loading">
+        <div className="auth-loading-spinner" />
+        <p>잠시만 기다려 주세요...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <LoginPage />
+  }
 
   return (
     <div className="app">
@@ -44,8 +63,24 @@ export default function App() {
               </button>
             </div>
             <button className="print-btn" onClick={() => handlePrint()}>
-              🖨 출력 / PDF 저장
+              🖨 출력 / PDF
             </button>
+            <div className="user-menu">
+              <img
+                src={user.photoURL ?? ''}
+                alt={user.displayName ?? ''}
+                className="user-avatar"
+                referrerPolicy="no-referrer"
+              />
+              <div className="user-dropdown">
+                <div className="user-info">
+                  <strong>{user.displayName}</strong>
+                  <span>{user.email}</span>
+                </div>
+                <div className="auto-save-note">☁ 자동 저장 활성화됨</div>
+                <button className="logout-btn" onClick={logout}>로그아웃</button>
+              </div>
+            </div>
           </div>
         </div>
       </header>
