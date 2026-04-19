@@ -710,6 +710,18 @@ body {
 }
 .logout-btn:hover { background: #fdecea; }
 
+/* Save status indicator */
+.save-status {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 20px;
+  transition: opacity 0.3s;
+}
+.save-status--saving { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); }
+.save-status--saved  { background: rgba(46,125,50,0.35);  color: #a5d6a7; }
+.save-status--error  { background: rgba(198,40,40,0.35);  color: #ef9a9a; }
+
 /* Responsive login */
 @media (max-width: 640px) {
   .login-panel { display: none; }
