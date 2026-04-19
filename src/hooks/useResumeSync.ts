@@ -5,39 +5,67 @@ import type { ResumeData } from '../types/resume'
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
-// Photo is stored in localStorage (avoids Firestore's 1MB doc limit)
-function savePhotoLocally(uid: string, photo: string) {
-  try { localStorage.setItem(`resume_photo_${uid}`, photo) } catch {}
+const GUEST_KEY = 'guest_resume'
+
+function savePhotoLocally(key: string, photo: string) {
+  try { localStorage.setItem(`resume_photo_${key}`, photo) } catch {}
 }
-function loadPhotoLocally(uid: string): string {
-  try { return localStorage.getItem(`resume_photo_${uid}`) ?? '' } catch { return '' }
+function loadPhotoLocally(key: string): string {
+  try { return localStorage.getItem(`resume_photo_${key}`) ?? '' } catch { return '' }
+}
+function saveGuestData(data: ResumeData) {
+  try {
+    const { personalInfo, ...rest } = data
+    const { photo, ...infoWithoutPhoto } = personalInfo
+    localStorage.setItem(GUEST_KEY, JSON.stringify({ ...rest, personalInfo: infoWithoutPhoto }))
+    if (photo) savePhotoLocally('guest', photo)
+  } catch {}
+}
+function loadGuestData(): ResumeData | null {
+  try {
+    const raw = localStorage.getItem(GUEST_KEY)
+    if (!raw) return null
+    const saved = JSON.parse(raw) as ResumeData
+    const photo = loadPhotoLocally('guest')
+    return { ...saved, personalInfo: { ...saved.personalInfo, photo } }
+  } catch { return null }
 }
 
 export function useResumeSync(
   uid: string | null,
+  isGuest: boolean,
   data: ResumeData,
   setData: (d: ResumeData) => void,
   onStatus: (s: SaveStatus) => void,
-  onReady: () => void,       // always fires when load completes (hides spinner)
-  onRestored: () => void     // fires only when saved data was found (shows toast)
+  onReady: () => void,
+  onRestored: () => void
 ) {
   const loadedUid = useRef<string | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestData = useRef(data)
+  const isGuestRef = useRef(isGuest)
 
   useEffect(() => { latestData.current = data })
+  useEffect(() => { isGuestRef.current = isGuest })
 
+  // ── Guest mode: load from localStorage ──────────────────────────
+  useEffect(() => {
+    if (!isGuest) return
+    const saved = loadGuestData()
+    if (saved) { setData(saved); onRestored() }
+    loadedUid.current = 'guest'
+    onStatus('idle')
+    onReady()
+  }, [isGuest])
+
+  // ── Logged-in: load from Firestore ──────────────────────────────
   const saveNow = useCallback(async (uidToSave: string, payload: ResumeData) => {
     try {
       onStatus('saving')
-      // Strip photo from Firestore payload — stored separately in localStorage
       const { personalInfo, ...rest } = payload
-      const { photo, ...personalInfoWithoutPhoto } = personalInfo
-      const firestorePayload = { ...rest, personalInfo: personalInfoWithoutPhoto }
-
+      const { photo, ...infoWithoutPhoto } = personalInfo
       if (photo) savePhotoLocally(uidToSave, photo)
-
-      await setDoc(doc(db, 'resumes', uidToSave), firestorePayload)
+      await setDoc(doc(db, 'resumes', uidToSave), { ...rest, personalInfo: infoWithoutPhoto })
       onStatus('saved')
     } catch (e) {
       console.error('Firestore save failed:', e)
@@ -45,24 +73,15 @@ export function useResumeSync(
     }
   }, [onStatus])
 
-  // Load from Firestore on login
   useEffect(() => {
-    if (!uid) {
-      loadedUid.current = null
-      return
-    }
-
+    if (!uid) { loadedUid.current = null; return }
     loadedUid.current = null
-
     getDoc(doc(db, 'resumes', uid))
       .then(snap => {
         if (snap.exists()) {
           const saved = snap.data() as ResumeData
           const photo = loadPhotoLocally(uid)
-          setData({
-            ...saved,
-            personalInfo: { ...saved.personalInfo, photo },
-          })
+          setData({ ...saved, personalInfo: { ...saved.personalInfo, photo } })
           onRestored()
         }
         loadedUid.current = uid
@@ -73,32 +92,40 @@ export function useResumeSync(
         console.error('Firestore load failed:', e)
         loadedUid.current = uid
         onStatus('error')
-        onReady() // unblock UI even on error
+        onReady()
       })
   }, [uid])
 
-  // Debounced auto-save (800ms) — only after load completes
+  // ── Auto-save (debounced 800ms) ──────────────────────────────────
   useEffect(() => {
-    if (!uid || loadedUid.current !== uid) return
+    const activeKey = isGuest ? 'guest' : uid
+    if (!activeKey || loadedUid.current !== (isGuest ? 'guest' : uid)) return
 
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      saveNow(uid, latestData.current)
+      if (isGuestRef.current) {
+        saveGuestData(latestData.current)
+        onStatus('saved')
+      } else if (uid) {
+        saveNow(uid, latestData.current)
+      }
     }, 800)
 
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [uid, data, saveNow])
+  }, [uid, isGuest, data, saveNow])
 
-  // Force-save on tab close
+  // ── Force-save on tab close ──────────────────────────────────────
   useEffect(() => {
-    if (!uid) return
     const flush = () => {
-      if (loadedUid.current !== uid) return
       if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
-      const { personalInfo, ...rest } = latestData.current
-      const { photo, ...personalInfoWithoutPhoto } = personalInfo
-      if (photo) savePhotoLocally(uid, photo)
-      setDoc(doc(db, 'resumes', uid), { ...rest, personalInfo: personalInfoWithoutPhoto }).catch(() => {})
+      if (isGuestRef.current) {
+        saveGuestData(latestData.current)
+      } else if (uid && loadedUid.current === uid) {
+        const { personalInfo, ...rest } = latestData.current
+        const { photo, ...infoWithoutPhoto } = personalInfo
+        if (photo) savePhotoLocally(uid, photo)
+        setDoc(doc(db, 'resumes', uid), { ...rest, personalInfo: infoWithoutPhoto }).catch(() => {})
+      }
     }
     window.addEventListener('beforeunload', flush)
     return () => window.removeEventListener('beforeunload', flush)

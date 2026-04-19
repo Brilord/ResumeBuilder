@@ -17,7 +17,6 @@ const saveStatusLabel: Record<SaveStatus, string> = {
   saved: '☁ 저장됨',
   error: '⚠ 저장 실패',
 }
-
 const saveStatusClass: Record<SaveStatus, string> = {
   idle: '',
   saving: 'save-status--saving',
@@ -32,13 +31,15 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [showToast, setShowToast] = useState(false)
   const [dataReady, setDataReady] = useState(false)
+  const [isGuest, setIsGuest] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
 
-  // Reset dataReady whenever user changes so next login re-syncs
-  const prevUid = useRef<string | null | undefined>(undefined)
-  if (user?.uid !== prevUid.current) {
-    prevUid.current = user?.uid ?? null
-    if (!user) setDataReady(false)
+  // Reset ready state when uid or guest mode changes
+  const prevKey = useRef<string>('')
+  const currentKey = user ? user.uid : isGuest ? 'guest' : ''
+  if (currentKey !== prevKey.current) {
+    prevKey.current = currentKey
+    if (!currentKey) setDataReady(false)
   }
 
   const handleReady = () => setDataReady(true)
@@ -47,7 +48,15 @@ export default function App() {
     setTimeout(() => setShowToast(false), 3000)
   }
 
-  useResumeSync(user?.uid ?? null, data, setData, setSaveStatus, handleReady, handleRestored)
+  useResumeSync(
+    user?.uid ?? null,
+    isGuest,
+    data,
+    setData,
+    setSaveStatus,
+    handleReady,
+    handleRestored
+  )
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -63,7 +72,9 @@ export default function App() {
     )
   }
 
-  if (!user) return <LoginPage />
+  if (!user && !isGuest) {
+    return <LoginPage onGuest={() => setIsGuest(true)} />
+  }
 
   if (!dataReady) {
     return (
@@ -112,24 +123,41 @@ export default function App() {
             <button className="print-btn" onClick={() => handlePrint()}>
               🖨 출력 / PDF
             </button>
-            <div className="user-menu">
-              <img
-                src={user.photoURL ?? ''}
-                alt={user.displayName ?? ''}
-                className="user-avatar"
-                referrerPolicy="no-referrer"
-              />
-              <div className="user-dropdown">
-                <div className="user-info">
-                  <strong>{user.displayName}</strong>
-                  <span>{user.email}</span>
+
+            {user ? (
+              <div className="user-menu">
+                <img
+                  src={user.photoURL ?? ''}
+                  alt={user.displayName ?? ''}
+                  className="user-avatar"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="user-dropdown">
+                  <div className="user-info">
+                    <strong>{user.displayName}</strong>
+                    <span>{user.email}</span>
+                  </div>
+                  <div className="auto-save-note">☁ 자동 저장 활성화됨</div>
+                  <button className="logout-btn" onClick={logout}>로그아웃</button>
                 </div>
-                <div className="auto-save-note">☁ 자동 저장 활성화됨</div>
-                <button className="logout-btn" onClick={logout}>로그아웃</button>
               </div>
-            </div>
+            ) : (
+              <button
+                className="guest-login-btn"
+                onClick={() => setIsGuest(false)}
+              >
+                로그인
+              </button>
+            )}
           </div>
         </div>
+
+        {isGuest && !user && (
+          <div className="guest-banner">
+            ⚠ 게스트 모드 — 이 기기에만 저장됩니다.&nbsp;
+            <button onClick={() => setIsGuest(false)}>Google로 로그인하여 클라우드에 저장하기 →</button>
+          </div>
+        )}
       </header>
 
       <main className="app-main">

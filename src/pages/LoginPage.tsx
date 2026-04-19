@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
-export default function LoginPage() {
+interface Props {
+  onGuest: () => void
+}
+
+export default function LoginPage({ onGuest }: Props) {
   const { signInWithGoogle } = useAuth()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -70,9 +74,13 @@ export default function LoginPage() {
               <span>또는</span>
             </div>
 
+            <button className="guest-btn" onClick={onGuest}>
+              로그인 없이 시작하기
+            </button>
+
             <div className="login-guest-note">
-              <p>로그인 없이 사용하면 데이터가 저장되지 않습니다.</p>
-              <p>계정을 만들면 언제 어디서든 이력서를 이어서 작성할 수 있습니다.</p>
+              <p>⚠ 로그인 없이 사용하면 이 기기의 브라우저에만 저장됩니다.</p>
+              <p>Google로 로그인하면 어디서든 이어서 작성할 수 있습니다.</p>
             </div>
 
             <div className="login-terms">
