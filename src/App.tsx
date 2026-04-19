@@ -30,9 +30,15 @@ export default function App() {
   const [data, setData] = useState<ResumeData>(defaultResumeData)
   const [tab, setTab] = useState<Tab>('form')
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const [showToast, setShowToast] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
 
-  useResumeSync(user?.uid ?? null, data, setData, setSaveStatus)
+  const handleLoaded = () => {
+    setShowToast(true)
+    setTimeout(() => setShowToast(false), 3000)
+  }
+
+  useResumeSync(user?.uid ?? null, data, setData, setSaveStatus, handleLoaded)
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -52,6 +58,10 @@ export default function App() {
 
   return (
     <div className="app">
+      {showToast && (
+        <div className="toast">✅ 저장된 이력서를 불러왔습니다!</div>
+      )}
+
       <header className="app-header">
         <div className="header-inner">
           <div className="header-brand">
