@@ -18,7 +18,8 @@ export function useResumeSync(
   data: ResumeData,
   setData: (d: ResumeData) => void,
   onStatus: (s: SaveStatus) => void,
-  onLoaded: () => void
+  onReady: () => void,       // always fires when load completes (hides spinner)
+  onRestored: () => void     // fires only when saved data was found (shows toast)
 ) {
   const loadedUid = useRef<string | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -57,21 +58,22 @@ export function useResumeSync(
       .then(snap => {
         if (snap.exists()) {
           const saved = snap.data() as ResumeData
-          // Restore photo from localStorage
           const photo = loadPhotoLocally(uid)
           setData({
             ...saved,
             personalInfo: { ...saved.personalInfo, photo },
           })
-          onLoaded()
+          onRestored()
         }
         loadedUid.current = uid
         onStatus('idle')
+        onReady()
       })
       .catch(e => {
         console.error('Firestore load failed:', e)
         loadedUid.current = uid
         onStatus('error')
+        onReady() // unblock UI even on error
       })
   }, [uid])
 

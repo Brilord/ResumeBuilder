@@ -31,14 +31,23 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('form')
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [showToast, setShowToast] = useState(false)
+  const [dataReady, setDataReady] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
 
-  const handleLoaded = () => {
+  // Reset dataReady whenever user changes so next login re-syncs
+  const prevUid = useRef<string | null | undefined>(undefined)
+  if (user?.uid !== prevUid.current) {
+    prevUid.current = user?.uid ?? null
+    if (!user) setDataReady(false)
+  }
+
+  const handleReady = () => setDataReady(true)
+  const handleRestored = () => {
     setShowToast(true)
     setTimeout(() => setShowToast(false), 3000)
   }
 
-  useResumeSync(user?.uid ?? null, data, setData, setSaveStatus, handleLoaded)
+  useResumeSync(user?.uid ?? null, data, setData, setSaveStatus, handleReady, handleRestored)
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -55,6 +64,15 @@ export default function App() {
   }
 
   if (!user) return <LoginPage />
+
+  if (!dataReady) {
+    return (
+      <div className="auth-loading">
+        <div className="auth-loading-spinner" />
+        <p>이력서 데이터를 불러오는 중...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="app">
