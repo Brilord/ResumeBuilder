@@ -11,8 +11,17 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await signInWithGoogle()
-    } catch {
-      setError('로그인에 실패했습니다. 다시 시도해 주세요.')
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code ?? ''
+      if (code === 'auth/popup-blocked') {
+        setError('팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.')
+      } else if (code === 'auth/popup-closed-by-user') {
+        setError('로그인 창이 닫혔습니다. 다시 시도해 주세요.')
+      } else if (code === 'auth/operation-not-allowed') {
+        setError('Google 로그인이 Firebase에서 활성화되지 않았습니다. Firebase Console → Authentication → Sign-in method → Google을 활성화해 주세요.')
+      } else {
+        setError(`로그인 실패: ${code || '알 수 없는 오류'}`)
+      }
     } finally {
       setLoading(false)
     }
