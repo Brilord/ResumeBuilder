@@ -60,6 +60,7 @@ export function useResumeSync(
 
   // ── Logged-in: load from Firestore ──────────────────────────────
   const saveNow = useCallback(async (uidToSave: string, payload: ResumeData) => {
+    if (!db) return
     try {
       onStatus('saving')
       const { personalInfo, ...rest } = payload
@@ -75,6 +76,7 @@ export function useResumeSync(
 
   useEffect(() => {
     if (!uid) { loadedUid.current = null; return }
+    if (!db) { loadedUid.current = uid; onStatus('idle'); onReady(); return }
     loadedUid.current = null
     getDoc(doc(db, 'resumes', uid))
       .then(snap => {
@@ -120,7 +122,7 @@ export function useResumeSync(
       if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
       if (isGuestRef.current) {
         saveGuestData(latestData.current)
-      } else if (uid && loadedUid.current === uid) {
+      } else if (db && uid && loadedUid.current === uid) {
         const { personalInfo, ...rest } = latestData.current
         const { photo, ...infoWithoutPhoto } = personalInfo
         if (photo) savePhotoLocally(uid, photo)

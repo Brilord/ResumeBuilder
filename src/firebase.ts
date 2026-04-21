@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
-import { getAnalytics } from 'firebase/analytics'
+import { getAnalytics, isSupported } from 'firebase/analytics'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -13,9 +13,22 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
-const app = initializeApp(firebaseConfig)
+const hasConfig = !!firebaseConfig.apiKey && !!firebaseConfig.projectId
 
-export const auth = getAuth(app)
-export const db = getFirestore(app)
-export const googleProvider = new GoogleAuthProvider()
-export const analytics = getAnalytics(app)
+let auth: ReturnType<typeof getAuth> | null = null
+let db: ReturnType<typeof getFirestore> | null = null
+let googleProvider: GoogleAuthProvider | null = null
+
+if (hasConfig) {
+  try {
+    const app = initializeApp(firebaseConfig)
+    auth = getAuth(app)
+    db = getFirestore(app)
+    googleProvider = new GoogleAuthProvider()
+    isSupported().then(yes => yes ? getAnalytics(app) : null)
+  } catch (e) {
+    console.warn('Firebase initialization failed — running in guest-only mode.', e)
+  }
+}
+
+export { auth, db, googleProvider }
