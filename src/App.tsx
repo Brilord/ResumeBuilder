@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useReactToPrint } from 'react-to-print'
 import ResumeForm from './components/ResumeForm'
 import ResumePreview from './components/ResumePreview'
@@ -8,6 +8,7 @@ import { useResumeSync } from './hooks/useResumeSync'
 import type { SaveStatus } from './hooks/useResumeSync'
 import type { ResumeData } from './types/resume'
 import { defaultResumeData } from './types/resume'
+import { exportResume } from './utils/exportResume'
 
 type Tab = 'form' | 'preview'
 
@@ -31,16 +32,21 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [showToast, setShowToast] = useState(false)
   const [dataReady, setDataReady] = useState(false)
-  const [isGuest, setIsGuest] = useState(false)
+  const [isGuest, setIsGuest] = useState(true)
   const printRef = useRef<HTMLDivElement>(null)
+  const country = data.country ?? 'KR'
 
   // Reset ready state when uid or guest mode changes
   const prevKey = useRef<string>('')
   const currentKey = user ? user.uid : isGuest ? 'guest' : ''
   if (currentKey !== prevKey.current) {
     prevKey.current = currentKey
-    if (!currentKey) setDataReady(false)
+    setDataReady(false)
   }
+
+  useEffect(() => {
+    if (user) setIsGuest(false)
+  }, [user])
 
   const handleReady = () => setDataReady(true)
   const handleRestored = () => {
@@ -58,10 +64,21 @@ export default function App() {
     handleRestored
   )
 
-  const handlePrint = useReactToPrint({
+  const printResume = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `이력서_${data.personalInfo.nameKo || '홍길동'}`,
+    documentTitle: `${country === 'US' ? 'Resume' : '이력서'}_${data.personalInfo.nameEn || data.personalInfo.nameKo || (country === 'US' ? 'Your_Name' : '홍길동')}`,
+    onPrintError: (_location, error) => {
+      console.error('Print failed:', error)
+    },
   })
+
+  const handlePrint = () => {
+    if (tab !== 'preview') {
+      setTab('preview')
+      return
+    }
+    printResume()
+  }
 
   if (loading) {
     return (
@@ -96,8 +113,8 @@ export default function App() {
           <div className="header-brand">
             <span className="brand-icon">📄</span>
             <div>
-              <h1 className="brand-title">한국식 이력서 작성기</h1>
-              <p className="brand-sub">Korean Resume Builder</p>
+              <h1 className="brand-title">이력서 작성기</h1>
+              <p className="brand-sub">Korean / American Resume Builder</p>
             </div>
           </div>
           <div className="header-actions">
@@ -170,6 +187,18 @@ export default function App() {
             <div className="preview-actions-bar">
               <button className="print-btn" onClick={() => handlePrint()}>
                 🖨 출력 / PDF 저장
+              </button>
+              <button className="export-btn" onClick={() => exportResume(data, 'doc')}>
+                DOC
+              </button>
+              <button className="export-btn" onClick={() => exportResume(data, 'html')}>
+                HTML
+              </button>
+              <button className="export-btn" onClick={() => exportResume(data, 'txt')}>
+                TXT
+              </button>
+              <button className="export-btn" onClick={() => exportResume(data, 'json')}>
+                JSON
               </button>
             </div>
             <div ref={printRef}>

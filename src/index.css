@@ -225,6 +225,24 @@ body {
 }
 .add-btn:hover { background: #d0e0f5; }
 
+.example-fill-btn {
+  flex: 1;
+  padding: 9px 14px;
+  background: #263238;
+  color: white;
+  border: 1px solid #263238;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: background 0.2s, border-color 0.2s;
+}
+.example-fill-btn:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
 .self-intro-textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -245,7 +263,29 @@ body {
 ═══════════════════════════════════════ */
 .preview-page { max-width: 900px; margin: 0 auto; }
 
-.preview-actions-bar { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+.preview-actions-bar {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.export-btn {
+  background: white;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 0.85rem;
+  transition: background 0.2s, color 0.2s;
+}
+.export-btn:hover {
+  background: var(--primary-light);
+}
 
 .resume-preview {
   background: white;
@@ -403,12 +443,95 @@ body {
   min-height: 300px;
 }
 
+/* American resume layout */
+.resume-preview--us {
+  font-family: Arial, Helvetica, sans-serif;
+  padding: 48px 56px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.us-resume-header {
+  text-align: center;
+  border-bottom: 2px solid #222;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+}
+
+.us-resume-header h1 {
+  font-size: 2rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  color: #111;
+  margin-bottom: 6px;
+}
+
+.us-contact-line {
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.us-target-role {
+  margin-top: 6px;
+  font-weight: 700;
+  color: #1a4a8a;
+}
+
+.us-section {
+  margin-top: 16px;
+}
+
+.us-section h2 {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  color: #111;
+  border-bottom: 1px solid #555;
+  padding-bottom: 3px;
+  margin-bottom: 8px;
+}
+
+.us-entry {
+  margin-bottom: 10px;
+}
+
+.us-entry-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.us-entry-sub,
+.us-date-range {
+  color: #444;
+  font-size: 0.88rem;
+}
+
+.us-date-range {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.us-body-text {
+  white-space: pre-wrap;
+  margin-top: 4px;
+}
+
+.us-compact-list {
+  margin-left: 18px;
+}
+
+.us-compact-list li {
+  margin-bottom: 4px;
+}
+
 /* ═══════════════════════════════════════
    PRINT STYLES
 ═══════════════════════════════════════ */
 @media print {
   body { background: white; }
-  .app-header, .preview-actions-bar, .print-btn { display: none !important; }
+  .app-header, .preview-actions-bar, .print-btn, .export-btn { display: none !important; }
   .app-main { padding: 0; max-width: 100%; }
   .preview-page { max-width: 100%; }
   .resume-preview {
@@ -418,6 +541,7 @@ body {
   }
   .self-intro-page { page-break-before: always; }
   .resume-table { page-break-inside: avoid; }
+  .us-section, .us-entry { page-break-inside: avoid; }
 }
 
 /* ═══════════════════════════════════════
@@ -428,7 +552,10 @@ body {
   .photo-row { flex-direction: column; align-items: center; }
   .form-grid-2 { grid-template-columns: 1fr; }
   .resume-preview { padding: 16px; font-size: 11px; }
+  .resume-preview--us { padding: 20px; }
   .resume-main-title { font-size: 1.4rem; letter-spacing: 0.3rem; }
+  .us-entry-heading { flex-direction: column; gap: 2px; }
+  .us-date-range { text-align: left; }
 }
 
 /* ═══════════════════════════════════════

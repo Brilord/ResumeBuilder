@@ -11,10 +11,24 @@ const levelMap: Record<string, string> = {
   beginner: '초급',
 }
 
+const usLevelMap: Record<string, string> = {
+  native: 'Native',
+  advanced: 'Advanced',
+  intermediate: 'Intermediate',
+  beginner: 'Beginner',
+}
+
 function formatMonth(ym: string) {
   if (!ym) return ''
   const [y, m] = ym.split('-')
   return `${y}년 ${m}월`
+}
+
+function formatMonthUS(ym: string) {
+  if (!ym) return ''
+  const [y, m] = ym.split('-')
+  const date = new Date(Number(y), Number(m) - 1)
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }
 
 function formatDate(d: string) {
@@ -35,6 +49,121 @@ function calcAge(birthDate: string) {
 
 export default function ResumePreview({ data }: Props) {
   const { personalInfo, education, workExperience, militaryService, certifications, languageSkills, awards, selfIntroduction, applyingFor, applicationDate } = data
+
+  if ((data.country ?? 'KR') === 'US') {
+    const displayName = personalInfo.nameEn || personalInfo.nameKo
+
+    return (
+      <div className="resume-preview resume-preview--us">
+        <header className="us-resume-header">
+          <h1>{displayName || 'Your Name'}</h1>
+          <div className="us-contact-line">
+            {[personalInfo.address, personalInfo.phone, personalInfo.email].filter(Boolean).join(' | ')}
+          </div>
+          {applyingFor && <div className="us-target-role">{applyingFor}</div>}
+        </header>
+
+        {selfIntroduction && (
+          <section className="us-section">
+            <h2>Professional Summary</h2>
+            <p>{selfIntroduction}</p>
+          </section>
+        )}
+
+        {workExperience.some(w => w.companyName || w.position) && (
+          <section className="us-section">
+            <h2>Experience</h2>
+            {workExperience.filter(w => w.companyName || w.position).map(work => (
+              <div className="us-entry" key={work.id}>
+                <div className="us-entry-heading">
+                  <div>
+                    <strong>{work.position || 'Role'}</strong>
+                    {work.companyName && <span> | {work.companyName}</span>}
+                    {work.department && <div className="us-entry-sub">{work.department}</div>}
+                  </div>
+                  <span className="us-date-range">
+                    {formatMonthUS(work.startDate)}
+                    {(work.startDate || work.endDate || work.isCurrent) && ' - '}
+                    {work.isCurrent ? 'Present' : formatMonthUS(work.endDate)}
+                  </span>
+                </div>
+                {work.responsibilities && <div className="us-body-text">{work.responsibilities}</div>}
+              </div>
+            ))}
+          </section>
+        )}
+
+        {education.some(e => e.schoolName) && (
+          <section className="us-section">
+            <h2>Education</h2>
+            {education.filter(e => e.schoolName).map(edu => (
+              <div className="us-entry" key={edu.id}>
+                <div className="us-entry-heading">
+                  <div>
+                    <strong>{edu.schoolName}</strong>
+                    {(edu.degree || edu.major) && (
+                      <div className="us-entry-sub">{[edu.degree, edu.major].filter(Boolean).join(', ')}</div>
+                    )}
+                    {(edu.status || edu.gpa) && (
+                      <div className="us-entry-sub">{[edu.status, edu.gpa ? `GPA ${edu.gpa}/${edu.gpaMax}` : ''].filter(Boolean).join(' | ')}</div>
+                    )}
+                  </div>
+                  <span className="us-date-range">
+                    {[formatMonthUS(edu.startDate), formatMonthUS(edu.endDate)].filter(Boolean).join(' - ')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {certifications.some(c => c.name) && (
+          <section className="us-section">
+            <h2>Certifications</h2>
+            <ul className="us-compact-list">
+              {certifications.filter(c => c.name).map(cert => (
+                <li key={cert.id}>
+                  <strong>{cert.name}</strong>
+                  {[cert.issuer, formatMonthUS(cert.issueDate), cert.score].filter(Boolean).length > 0 &&
+                    ` - ${[cert.issuer, formatMonthUS(cert.issueDate), cert.score].filter(Boolean).join(' | ')}`}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {languageSkills.some(l => l.language) && (
+          <section className="us-section">
+            <h2>Languages</h2>
+            <ul className="us-compact-list">
+              {languageSkills.filter(l => l.language).map(lang => (
+                <li key={lang.id}>
+                  <strong>{lang.language}</strong>
+                  {[lang.level ? usLevelMap[lang.level] : '', lang.testName, lang.score].filter(Boolean).length > 0 &&
+                    ` - ${[lang.level ? usLevelMap[lang.level] : '', lang.testName, lang.score].filter(Boolean).join(' | ')}`}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {awards.some(a => a.name) && (
+          <section className="us-section">
+            <h2>Awards / Activities</h2>
+            <ul className="us-compact-list">
+              {awards.filter(a => a.name).map(award => (
+                <li key={award.id}>
+                  <strong>{award.name}</strong>
+                  {[award.issuer, formatMonthUS(award.date), award.description].filter(Boolean).length > 0 &&
+                    ` - ${[award.issuer, formatMonthUS(award.date), award.description].filter(Boolean).join(' | ')}`}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="resume-preview">
