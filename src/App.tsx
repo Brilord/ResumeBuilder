@@ -201,7 +201,10 @@ export default function App() {
                 JSON
               </button>
             </div>
-            <div ref={printRef}>
+            <div
+              ref={printRef}
+              className={`preview-document-frame ${country === 'KR' ? 'preview-document-frame--paper' : ''}`}
+            >
               <ResumePreview data={data} />
             </div>
           </div>

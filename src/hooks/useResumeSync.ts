@@ -1,6 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { db } from '../firebase'
+import { getFirebaseServices } from '../firebase'
 import type { ResumeData } from '../types/resume'
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -60,9 +59,11 @@ export function useResumeSync(
 
   // ── Logged-in: load from Firestore ──────────────────────────────
   const saveNow = useCallback(async (uidToSave: string, payload: ResumeData) => {
+    const { db } = await getFirebaseServices()
     if (!db) return
     try {
       onStatus('saving')
+      const { doc, setDoc } = await import('firebase/firestore')
       const { personalInfo, ...rest } = payload
       const { photo, ...infoWithoutPhoto } = personalInfo
       if (photo) savePhotoLocally(uidToSave, photo)
@@ -76,10 +77,22 @@ export function useResumeSync(
 
   useEffect(() => {
     if (!uid) { loadedUid.current = null; return }
-    if (!db) { loadedUid.current = uid; onStatus('idle'); onReady(); return }
+    let active = true
     loadedUid.current = null
-    getDoc(doc(db, 'resumes', uid))
+    getFirebaseServices()
+      .then(async ({ db }) => {
+        if (!active) return null
+        if (!db) {
+          loadedUid.current = uid
+          onStatus('idle')
+          onReady()
+          return null
+        }
+        const { doc, getDoc } = await import('firebase/firestore')
+        return getDoc(doc(db, 'resumes', uid))
+      })
       .then(snap => {
+        if (!active || !snap) return
         if (snap.exists()) {
           const saved = snap.data() as ResumeData
           const photo = loadPhotoLocally(uid)
@@ -91,11 +104,13 @@ export function useResumeSync(
         onReady()
       })
       .catch(e => {
+        if (!active) return
         console.error('Firestore load failed:', e)
         loadedUid.current = uid
         onStatus('error')
         onReady()
       })
+    return () => { active = false }
   }, [uid])
 
   // ── Auto-save (debounced 800ms) ──────────────────────────────────
@@ -122,11 +137,17 @@ export function useResumeSync(
       if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
       if (isGuestRef.current) {
         saveGuestData(latestData.current)
-      } else if (db && uid && loadedUid.current === uid) {
+      } else if (uid && loadedUid.current === uid) {
         const { personalInfo, ...rest } = latestData.current
         const { photo, ...infoWithoutPhoto } = personalInfo
         if (photo) savePhotoLocally(uid, photo)
-        setDoc(doc(db, 'resumes', uid), { ...rest, personalInfo: infoWithoutPhoto }).catch(() => {})
+        getFirebaseServices()
+          .then(async ({ db }) => {
+            if (!db) return
+            const { doc, setDoc } = await import('firebase/firestore')
+            await setDoc(doc(db, 'resumes', uid), { ...rest, personalInfo: infoWithoutPhoto })
+          })
+          .catch(() => {})
       }
     }
     window.addEventListener('beforeunload', flush)

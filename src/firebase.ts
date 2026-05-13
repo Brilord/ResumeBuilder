@@ -1,7 +1,5 @@
-import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
-import { getAnalytics, isSupported } from 'firebase/analytics'
+import type { Auth, GoogleAuthProvider } from 'firebase/auth'
+import type { Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,20 +13,44 @@ const firebaseConfig = {
 
 const hasConfig = !!firebaseConfig.apiKey && !!firebaseConfig.projectId
 
-let auth: ReturnType<typeof getAuth> | null = null
-let db: ReturnType<typeof getFirestore> | null = null
-let googleProvider: GoogleAuthProvider | null = null
-
-if (hasConfig) {
-  try {
-    const app = initializeApp(firebaseConfig)
-    auth = getAuth(app)
-    db = getFirestore(app)
-    googleProvider = new GoogleAuthProvider()
-    isSupported().then(yes => yes ? getAnalytics(app) : null)
-  } catch (e) {
-    console.warn('Firebase initialization failed — running in guest-only mode.', e)
-  }
+export interface FirebaseServices {
+  auth: Auth | null
+  db: Firestore | null
+  googleProvider: GoogleAuthProvider | null
 }
 
-export { auth, db, googleProvider }
+let servicesPromise: Promise<FirebaseServices> | null = null
+
+export async function getFirebaseServices(): Promise<FirebaseServices> {
+  if (!hasConfig) {
+    return { auth: null, db: null, googleProvider: null }
+  }
+
+  servicesPromise ??= initializeFirebase()
+  return servicesPromise
+}
+
+async function initializeFirebase(): Promise<FirebaseServices> {
+  try {
+    const [{ initializeApp }, { getAuth, GoogleAuthProvider }, { getFirestore }] = await Promise.all([
+      import('firebase/app'),
+      import('firebase/auth'),
+      import('firebase/firestore'),
+    ])
+    const app = initializeApp(firebaseConfig)
+    const auth = getAuth(app)
+    const db = getFirestore(app)
+    const googleProvider = new GoogleAuthProvider()
+
+    import('firebase/analytics')
+      .then(({ getAnalytics, isSupported }) => {
+        isSupported().then(yes => yes ? getAnalytics(app) : null)
+      })
+      .catch(() => {})
+
+    return { auth, db, googleProvider }
+  } catch (e) {
+    console.warn('Firebase initialization failed — running in guest-only mode.', e)
+    return { auth: null, db: null, googleProvider: null }
+  }
+}

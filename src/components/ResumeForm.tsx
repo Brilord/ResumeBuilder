@@ -254,7 +254,7 @@ export default function ResumeForm({ data, onChange }: Props) {
                 <label>{isUS ? 'End' : '졸업년월'}</label>
                 <input type="month" value={edu.endDate} onChange={e => updateEducation(edu.id, 'endDate', e.target.value)} />
               </div>
-              <div className="form-row">
+              <div className="form-row gpa-row">
                 <label>{isUS ? 'GPA' : '학점'}</label>
                 <input value={edu.gpa} onChange={e => updateEducation(edu.id, 'gpa', e.target.value)} placeholder={isUS ? '3.8' : '3.8'} style={{ width: '80px' }} />
                 <span style={{ margin: '0 6px', alignSelf: 'center' }}>/</span>
